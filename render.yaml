@@ -1,0 +1,45 @@
+# Render Blueprint —— 一键部署 jieyou-grocery-store
+# 用法：Render 后台 → New → Blueprint → 选本仓库 → 自动读取本文件。
+# sync: false 的变量，Render 会在首次部署时弹窗让你手动填（不放密钥进仓库）。
+
+services:
+  - type: web
+    name: jieyou-grocery-store
+    runtime: node
+    plan: free
+    # Node 版本：代码用 import.meta.dirname，必须 >= 20.11
+    buildCommand: npm install && npm run build
+    startCommand: NODE_ENV=production node dist/boot.js
+    autoDeploy: true
+    envVars:
+      # ── 运行时 ──
+      - key: NODE_VERSION
+        value: "20.11.0"
+      - key: NODE_ENV
+        value: production
+
+      # ── 后端必填（生产环境缺一会启动失败）──
+      - key: APP_ID
+        sync: false
+      - key: APP_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: KIMI_AUTH_URL
+        value: https://auth.kimi.com
+      - key: KIMI_OPEN_URL
+        value: https://open.kimi.com
+
+      # ── 前端构建期变量（构建前必填，会烤进前端包）──
+      - key: VITE_KIMI_AUTH_URL
+        value: https://auth.kimi.com
+      - key: VITE_APP_ID
+        sync: false
+
+      # ── 可选 ──
+      - key: OWNER_UNION_ID
+        sync: false
+      - key: AI_CONCIERGE_URL
+        sync: false
+      - key: AI_DRAFT_URL
+        sync: false
