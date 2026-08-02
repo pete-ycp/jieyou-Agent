@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn/ui tokens — 暖纸皮肤 */
+    --background: 41 60% 92%;
+    --foreground: 28 24% 18%;
+    --card: 38 47% 84%;
+    --card-foreground: 28 24% 18%;
+    --popover: 41 60% 92%;
+    --popover-foreground: 28 24% 18%;
+    --primary: 11 57% 42%;
+    --primary-foreground: 41 60% 92%;
+    --secondary: 38 47% 84%;
+    --secondary-foreground: 25 37% 31%;
+    --muted: 38 30% 80%;
+    --muted-foreground: 172 9% 36%;
+    --accent: 36 74% 57%;
+    --accent-foreground: 28 24% 18%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 41 60% 92%;
+    --border: 37 32% 72%;
+    --input: 37 32% 72%;
+    --ring: 11 57% 42%;
+    --radius: 0.625rem;
+    --sidebar-background: 41 60% 92%;
+    --sidebar-foreground: 28 24% 18%;
+    --sidebar-primary: 11 57% 42%;
+    --sidebar-primary-foreground: 41 60% 92%;
+    --sidebar-accent: 38 47% 84%;
+    --sidebar-accent-foreground: 25 37% 31%;
+    --sidebar-border: 37 32% 72%;
+    --sidebar-ring: 11 57% 42%;
+
+    /* 昼夜主题变量（日间 = 营业中 08:30–20:00） */
+    --page-bg: #F7F0E1;
+    --page-fg: #3A2E24;
+    --paper-bg: #EBDCC3;
+    --paper-fg: #3A2E24;
+    --night-glow-opacity: 0;
+  }
+
+  [data-theme="night"] {
+    /* 夜间 = 打烊后，信箱投递口开放 */
+    --page-bg: #2E3A46;
+    --page-fg: #E8DFC9;
+    --paper-bg: #242F39;
+    --paper-fg: #E8DFC9;
+    --night-glow-opacity: 1;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: auto; /* Lenis 接管平滑滚动 */
+  }
+  body {
+    @apply bg-page text-page-fg font-serif;
+    line-height: 1.75;
+    transition: background-color 1200ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* 纸颗粒：和纸纹理平铺 + SVG 噪点，固定于内容之下 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url("/paper-texture.png");
+    background-size: 512px 512px;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+  }
+  [data-theme="night"] body::before {
+    opacity: 0.18;
+    mix-blend-mode: screen;
+  }
+  /* 昼夜切换时的暖光 overlay（1200ms 渐暗/渐亮） */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 50% at 18% 88%, rgba(242, 185, 92, 0.16), transparent 70%),
+      radial-gradient(50% 40% at 82% 12%, rgba(242, 185, 92, 0.07), transparent 70%);
+    opacity: var(--night-glow-opacity);
+    transition: opacity 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #root {
+    position: relative;
+    z-index: 2;
+  }
+  ::selection {
+    background: rgba(232, 163, 61, 0.35);
+  }
+}
+
+@layer components {
+  /* 仿旧明信片卡：牛皮纸底 + 细双线边框 + 暖纸影 */
+  .card-postcard {
+    @apply rounded-xl bg-kraft shadow-paper;
+    border: 1px solid #C9B48C;
+    box-shadow:
+      inset 0 0 0 3px #EBDCC3,
+      inset 0 0 0 4px rgba(201, 180, 140, 0.5),
+      0 2px 8px rgba(107, 74, 50, 0.12),
+      0 12px 32px rgba(107, 74, 50, 0.08);
+    background-image: linear-gradient(160deg, rgba(232, 163, 61, 0.06), rgba(235, 220, 195, 0) 55%);
+  }
+  /* 缝纫虚线分隔 */
+  .divider-sew {
+    border-top: 2px dashed #B9A67F;
+  }
+  /* 信纸淡横线（32px 间隔） */
+  .kraft-lines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(217, 201, 168, 0.6) 31px,
+      rgba(217, 201, 168, 0.6) 32px
+    );
+  }
+  /* 木纹 overlay（导航等深木棕结构件） */
+  .wood-grain {
+    background-image:
+      repeating-linear-gradient(
+        92deg,
+        rgba(58, 40, 26, 0.14) 0 2px,
+        transparent 2px 26px
+      ),
+      repeating-linear-gradient(
+        88deg,
+        rgba(255, 235, 200, 0.05) 0 1px,
+        transparent 1px 18px
+      );
+  }
+  /* 手绘下划线（链接 hover，SVG path draw 300ms 的 CSS 近似） */
+  .link-underline-hand {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 2px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    padding-bottom: 2px;
+  }
+  .link-underline-hand:hover {
+    background-size: 100% 2px;
+  }
+}
+
+@layer utilities {
+  .vertical-rl {
+    writing-mode: vertical-rl;
+    letter-spacing: 0.35em;
+  }
+  .text-glow-lamp {
+    text-shadow: 0 0 8px rgba(242, 185, 92, 0.8), 0 0 24px rgba(232, 163, 61, 0.45);
+  }
+}
+
+/* CTA 常驻微弱呼吸（朱红 95%↔100% 亮度，3.2s） */
+@keyframes cta-breathe {
+  0%,
+  100% {
+    filter: brightness(0.95);
+  }
+  50% {
+    filter: brightness(1);
+  }
+}
+
+/* 小柴漫游：各状态循环小动作（方向翻转由外层 span 负责，keyframes 不含 flip） */
+@keyframes shiba-bob {          /* 走路颠簸 */
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes shiba-hop {          /* 打招呼蹦跳 */
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+  60% { transform: translateY(-10px); }
+}
+@keyframes shiba-beg {          /* 作揖讨吃 */
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-5px) scaleY(1.03); }
+}
+@keyframes shiba-rock {         /* 倒地打滚，左右摇晃 */
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+@keyframes shiba-breathe {      /* 睡觉/静坐呼吸起伏 */
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+@keyframes shiba-munch {        /* 干饭点头 */
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+@keyframes shiba-zzz {          /* 睡觉 Zzz 飘字 */
+  0% { opacity: 0; transform: translateY(4px) scale(0.8); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-14px) scale(1.1); }
+}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs><filter id="roughA"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter></defs>
+  <g filter="url(#roughA)">
+    <!-- plate -->
+    <ellipse cx="185" cy="248" rx="150" ry="26" fill="#F7F0E1" stroke="#C9B48C" stroke-width="2.5"/>
+    <ellipse cx="185" cy="244" rx="118" ry="18" fill="none" stroke="#C9B48C" stroke-width="1.6"/>
+    <!-- anpan -->
+    <path d="M105 236 C98 188 138 160 185 160 C232 160 272 188 265 236 C230 252 140 252 105 236 Z" fill="#D9A05F" stroke="#A9743C" stroke-width="3"/>
+    <path d="M130 196 q18 -14 40 -16 M218 186 q16 6 24 20" fill="none" stroke="#B98446" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+    <ellipse cx="185" cy="172" rx="14" ry="7" fill="#8A5A2E" opacity="0.85"/>
+    <!-- glass milk bottle -->
+    <g>
+      <rect x="296" y="118" width="52" height="120" rx="12" fill="#EAF2EE" stroke="#9FB4AE" stroke-width="2.6" opacity="0.95"/>
+      <rect x="296" y="168" width="52" height="70" rx="12" fill="#FCFBF4"/>
+      <rect x="308" y="88" width="28" height="36" rx="5" fill="#EAF2EE" stroke="#9FB4AE" stroke-width="2.6"/>
+      <rect x="304" y="78" width="36" height="14" rx="5" fill="#4E5D5A"/>
+      <path d="M306 140 q16 8 32 0" fill="none" stroke="#9FB4AE" stroke-width="2"/>
+    </g>
+  </g>
+  <!-- steam layers (animated via CSS) -->
+  <g class="steam" fill="none" stroke="#E8DFC9" stroke-width="5" stroke-linecap="round" opacity="0.85">
+    <path class="steam-1" d="M150 138 q-10 -16 0 -30 q10 -14 0 -28"/>
+    <path class="steam-2" d="M185 130 q-10 -16 0 -30 q10 -14 0 -28"/>
+    <path class="steam-3" d="M220 138 q-10 -16 0 -30 q10 -14 0 -28"/>
+  </g>
+  <style>
+    .steam-1,.steam-2,.steam-3{animation:steamRise 4s ease-in-out infinite}
+    .steam-2{animation-delay:1.3s}
+    .steam-3{animation-delay:2.6s}
+    @keyframes steamRise{
+      0%{opacity:0;transform:translateY(6px)}
+      35%{opacity:.85}
+      100%{opacity:0;transform:translateY(-16px)}
+    }
+  </style>
+</svg>

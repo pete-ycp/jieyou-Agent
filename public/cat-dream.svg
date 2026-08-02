@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs><filter id="sealR"><feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="4"/></filter></defs>
+  <g filter="url(#sealR)">
+    <circle cx="120" cy="120" r="104" fill="none" stroke="#A63A2E" stroke-width="7"/>
+    <circle cx="120" cy="120" r="90" fill="none" stroke="#A63A2E" stroke-width="2.6"/>
+
+    <g fill="none" stroke="#A63A2E" stroke-width="6" stroke-linecap="round">
+      <rect x="58" y="116" width="86" height="30" rx="9" fill="none"/>
+      <line x1="58" y1="131" x2="144" y2="131" stroke-width="4"/>
+      <line x1="72" y1="116" x2="72" y2="146" stroke-width="3.4"/>
+      <line x1="88" y1="116" x2="88" y2="146" stroke-width="3.4"/>
+      <line x1="104" y1="116" x2="104" y2="146" stroke-width="3.4"/>
+      <line x1="120" y1="116" x2="120" y2="146" stroke-width="3.4"/>
+      <path d="M58 106 q-12 -14 0 -28" stroke-width="4"/>
+      <path d="M152 128 q24 -4 30 -26" stroke-width="4"/>
+      <path d="M160 96 q10 -22 26 -26" stroke-width="4"/>
+      <ellipse cx="188" cy="66" rx="9" ry="7"/>
+      <line x1="196" y1="66" x2="196" y2="42" stroke-width="4"/>
+    </g>  </g>
+</svg>

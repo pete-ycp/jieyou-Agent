@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs><filter id="roughL"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/></filter></defs>
+  <!-- glow layer (visible when .on) -->
+  <circle class="lamp-glow-layer" cx="100" cy="112" r="78" fill="#F2B95C" opacity="0"/>
+  <g filter="url(#roughL)">
+    <line x1="100" y1="12" x2="100" y2="34" stroke="#3A2E24" stroke-width="4"/>
+    <rect class="lamp-cap" x="78" y="34" width="44" height="12" rx="4" fill="#6B4A32"/>
+    <ellipse class="lamp-body" cx="100" cy="106" rx="52" ry="62" fill="none" stroke="#6B4A32" stroke-width="4.5"/>
+    <ellipse class="lamp-fill" cx="100" cy="106" rx="44" ry="54" fill="#F7F0E1" opacity="0.28"/>
+    <path class="lamp-ribs" d="M50 106 h100 M58 78 q42 16 84 0 M58 134 q42 -16 84 0" fill="none" stroke="#6B4A32" stroke-width="3"/>
+    <path class="lamp-ribs-v" d="M100 46 q-26 30 0 120 M100 46 q26 30 0 120" fill="none" stroke="#6B4A32" stroke-width="2.4" opacity="0.8"/>
+    <rect class="lamp-cap" x="82" y="162" width="36" height="11" rx="4" fill="#6B4A32"/>
+    <line x1="100" y1="173" x2="100" y2="184" stroke="#6B4A32" stroke-width="3"/>
+    <circle cx="100" cy="188" r="4" fill="#6B4A32"/>
+  </g>
+  <style>
+    .on .lamp-glow-layer{opacity:.5}
+    .on .lamp-fill{fill:#F2B95C;opacity:.92}
+    .on .lamp-body{stroke:#B85C38}
+    .on .lamp-ribs,.on .lamp-ribs-v{stroke:#B85C38}
+    .on .lamp-cap{fill:#8A4A30}
+  </style>
+</svg>

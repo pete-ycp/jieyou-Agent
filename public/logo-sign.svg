@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="480" height="160">
+  <defs>
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7A5638"/><stop offset="0.5" stop-color="#6B4A32"/><stop offset="1" stop-color="#5D3F2B"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#rough)">
+    <!-- main board -->
+    <rect x="18" y="16" width="444" height="92" rx="10" fill="url(#wood)" stroke="#4A3222" stroke-width="4"/>
+    <rect x="30" y="28" width="420" height="68" rx="6" fill="none" stroke="#8A6444" stroke-width="1.6" opacity="0.7"/>
+    <!-- wood grain -->
+    <path d="M40 44 q110 -8 200 0 t200 4" fill="none" stroke="#553A26" stroke-width="1.4" opacity="0.5"/>
+    <path d="M36 82 q140 8 220 -2 t188 2" fill="none" stroke="#553A26" stroke-width="1.4" opacity="0.45"/>
+    <!-- worn corners -->
+    <circle cx="30" cy="28" r="5" fill="#4A3222" opacity="0.55"/>
+    <circle cx="450" cy="96" r="5" fill="#4A3222" opacity="0.55"/>
+  </g>
+  <text x="240" y="82" text-anchor="middle" font-family="'Ma Shan Zheng','Noto Serif SC',serif" font-size="56" fill="#F7F0E1" stroke="#3A2E24" stroke-width="1.2" letter-spacing="10">解忧杂货店</text>
+  <!-- hanging strings + small board -->
+  <line x1="170" y1="108" x2="170" y2="124" stroke="#3A2E24" stroke-width="2"/>
+  <line x1="310" y1="108" x2="310" y2="124" stroke="#3A2E24" stroke-width="2"/>
+  <g filter="url(#rough)">
+    <rect x="120" y="124" width="240" height="28" rx="6" fill="#EBDCC3" stroke="#6B4A32" stroke-width="2.4"/>
+  </g>
+  <text x="240" y="143" text-anchor="middle" font-family="'Noto Serif SC',serif" font-size="14" fill="#6B4A32" letter-spacing="2">提供商品订购服务，欢迎咨询</text>
+</svg>

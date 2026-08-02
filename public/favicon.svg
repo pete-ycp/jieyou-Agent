@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#F7F0E1"/>
+  <!-- letter peeking -->
+  <g transform="rotate(-8 32 20)">
+    <rect x="22" y="10" width="22" height="15" rx="1.5" fill="#EBDCC3" stroke="#B9A67F" stroke-width="1.2"/>
+    <path d="M22 11 L33 19 L44 11" fill="none" stroke="#B9A67F" stroke-width="1.2"/>
+  </g>
+  <!-- box body -->
+  <rect x="12" y="24" width="40" height="30" rx="4" fill="#DCE8E4" stroke="#4E5D5A" stroke-width="2"/>
+  <rect x="16" y="27" width="32" height="8" rx="2" fill="#3A2E24" opacity="0.75"/>
+  <rect x="12" y="37" width="40" height="17" rx="4" fill="#DCE8E4"/>
+  <line x1="16" y1="44" x2="48" y2="44" stroke="#4E5D5A" stroke-width="1" opacity="0.5"/>
+  <!-- lid -->
+  <path d="M9 24 L32 14 L55 24 Z" fill="#B85C38" stroke="#8A3F28" stroke-width="2" stroke-linejoin="round"/>
+</svg>

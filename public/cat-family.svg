@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs><filter id="sealR"><feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="4"/></filter></defs>
+  <g filter="url(#sealR)">
+    <circle cx="120" cy="120" r="104" fill="none" stroke="#A63A2E" stroke-width="7"/>
+    <circle cx="120" cy="120" r="90" fill="none" stroke="#A63A2E" stroke-width="2.6"/>
+
+    <g fill="none" stroke="#A63A2E" stroke-width="6" stroke-linecap="round">
+      <line x1="56" y1="150" x2="184" y2="150"/>
+      <line x1="72" y1="150" x2="66" y2="182"/>
+      <line x1="168" y1="150" x2="174" y2="182"/>
+      <path d="M120 150 L120 128" stroke-width="5"/>
+      <path d="M92 128 L148 128 L136 96 L104 96 Z"/>
+      <circle cx="120" cy="114" r="8" stroke-width="4"/>
+      <path d="M84 76 q6 -10 0 -20 M120 70 q6 -10 0 -20 M156 76 q6 -10 0 -20" stroke-width="4" opacity="0.8"/>
+    </g>  </g>
+</svg>

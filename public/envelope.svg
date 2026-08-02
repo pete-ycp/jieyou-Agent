@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="400" height="260">
+  <defs>
+    <filter id="roughE"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+  </defs>
+  <!-- layer: letter paper -->
+  <g id="letter-paper" filter="url(#roughE)">
+    <rect x="60" y="18" width="280" height="150" rx="4" fill="#F7F0E1" stroke="#D9C9A8" stroke-width="2"/>
+    <g stroke="#D9C9A8" stroke-width="1.6" opacity="0.8">
+      <line x1="84" y1="50" x2="316" y2="50"/><line x1="84" y1="76" x2="316" y2="76"/>
+      <line x1="84" y1="102" x2="316" y2="102"/><line x1="84" y1="128" x2="260" y2="128"/>
+    </g>
+  </g>
+  <!-- layer: envelope body -->
+  <g id="envelope-body" filter="url(#roughE)">
+    <rect x="30" y="96" width="340" height="140" rx="6" fill="#EBDCC3" stroke="#B9A67F" stroke-width="2.5"/>
+    <path d="M30 100 L200 196 L370 100" fill="none" stroke="#B9A67F" stroke-width="2.5"/>
+    <path d="M30 232 L160 158 M370 232 L240 158" fill="none" stroke="#B9A67F" stroke-width="1.8"/>
+  </g>
+  <!-- layer: flap (open) -->
+  <g id="envelope-flap" filter="url(#roughE)">
+    <path d="M30 96 L200 20 L370 96 Z" fill="#E2CFAE" stroke="#B9A67F" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+  <!-- postmark -->
+  <g id="postmark" transform="rotate(-12 316 140)" opacity="0.9">
+    <circle cx="316" cy="140" r="30" fill="none" stroke="#A63A2E" stroke-width="2.6"/>
+    <circle cx="316" cy="140" r="23" fill="none" stroke="#A63A2E" stroke-width="1.4"/>
+    <path d="M292 138 q24 -10 48 0 M292 146 q24 10 48 0" fill="none" stroke="#A63A2E" stroke-width="1.6"/>
+  </g>
+  <text x="120" y="222" font-family="'Ma Shan Zheng','Noto Serif SC',serif" font-size="24" fill="#6B4A32" letter-spacing="4">致浪矢杂货店</text>
+</svg>
