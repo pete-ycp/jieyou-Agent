@@ -1,14 +1,18 @@
 # 解忧杂货店 · 阿里云部署完整流程
 
-> 本文档记录 **解忧杂货店（jieyou-grocery-store）** 在阿里云轻量应用服务器上的完整部署流程，从零到网站上线。  
+> 本文档记录 **解忧杂货店** 在阿里云轻量应用服务器上的完整部署流程，从零到网站 + AI 服务上线。  
 > 适合复盘、二次部署、或交给他人参考。
+>
+> **本部署涉及两个项目（同机部署）**
+> - **主站** `jieyou-grocery-store`：Node + Hono + tRPC + MySQL（商品/登录/下单/信件）
+> - **AI 服务** `jieyou-ai-concierge`：Python + LangGraph（小柴聊天 + AI 起草回信）
 >
 > **部署环境（本次实操）**
 > - 服务器：阿里云轻量应用服务器
 > - 系统：Alibaba Cloud Linux 3（`dnf` 包管理器）
 > - 宝塔面板（应用镜像）
-> - 部署目录：`/www/wwwroot/jieyou`
-> - 服务端口：`3000`
+> - 主站目录：`/www/wwwroot/jieyou`（端口 `3000`）
+> - AI 服务目录：`/www/wwwroot/jieyou-ai-concierge`（端口 `8001`，仅本机访问）
 > - 访问地址：`http://<服务器公网IP>:3000`
 
 ---
@@ -18,7 +22,7 @@
 1. [整体架构](#1-整体架构)
 2. [架构结论（读代码确认）](#2-架构结论读代码确认)
 3. [部署前准备](#3-部署前准备)
-4. [逐步部署](#4-逐步部署)
+4. [逐步部署 · 主站](#4-逐步部署--主站)
    - [步骤 1：买服务器 + 选镜像](#步骤-1买服务器--选镜像)
    - [步骤 2：放行端口](#步骤-2放行端口)
    - [步骤 3：安装基础软件](#步骤-3安装基础软件)
@@ -27,35 +31,52 @@
    - [步骤 6：装依赖 + 构建](#步骤-6装依赖--构建)
    - [步骤 7：配置 .env](#步骤-7配置-env)
    - [步骤 8：推表 + 灌数据](#步骤-8推表--灌数据)
-   - [步骤 9：PM2 启动服务](#步骤-9pm2-启动服务)
+   - [步骤 9：PM2 启动主站](#步骤-9pm2-启动主站)
    - [步骤 10：浏览器访问](#步骤-10浏览器访问)
-   - [步骤 11（可选）：Nginx 反代 + SSL](#步骤-11可选nginx-反代--ssl)
-5. [登录账号](#登录账号)
-6. [常见问题排查](#常见问题排查)
-7. [运维命令速查](#运维命令速查)
+5. [逐步部署 · AI 服务](#5-逐步部署--ai-服务)
+   - [步骤 11：装 uv（Python 包管理器）](#步骤-11装-uvpython-包管理器)
+   - [步骤 12：clone AI 服务代码](#步骤-12clone-ai-服务代码)
+   - [步骤 13：装 Python 依赖](#步骤-13装-python-依赖)
+   - [步骤 14：配置 AI 服务 .env](#步骤-14配置-ai-服务-env)
+   - [步骤 15：PM2 启动 AI 服务](#步骤-15pm2-启动-ai-服务)
+   - [步骤 16：主站对接 AI 服务](#步骤-16主站对接-ai-服务)
+6. [步骤 17（可选）：Nginx 反代 + SSL](#步骤-17可选nginx-反代--ssl)
+7. [登录账号](#登录账号)
+8. [常见问题排查](#常见问题排查)
+9. [运维命令速查](#运维命令速查)
 
 ---
 
 ## 1. 整体架构
 
 ```
-            ┌──────────────────────────────────────┐
-            │     阿里云轻量应用服务器              │
-            │     (Alibaba Cloud Linux + 宝塔)      │
-            │                                      │
-浏览器 ───► │  Nginx(可选) :80/:443  ──┐            │
-            │                          ▼            │
-            │              PM2 守护进程              │
-            │                   │                  │
-            │                   ▼                  │
-            │     Node 20 + Hono/tRPC :3000         │
-            │     (dist/boot.js + dist/public)      │
-            │                   │                  │
-            │                   ▼                  │
-            │            MySQL 8.0 :3306            │
-            │            (数据库 jieyou)             │
-            └──────────────────────────────────────┘
+            ┌──────────────────────────────────────────────────┐
+            │       阿里云轻量应用服务器                        │
+            │       (Alibaba Cloud Linux + 宝塔)                │
+            │                                                  │
+浏览器 ───► │  Nginx(可选) :80/:443  ──┐                       │
+            │                          ▼                       │
+            │              PM2 守护进程（管 2 个服务）          │
+            │                   │                              │
+            │         ┌─────────┴──────────┐                   │
+            │         ▼                    ▼                   │
+            │  主站 Node :3000      AI 服务 Python :8001       │
+            │  (Hono/tRPC)         (LangGraph + FastAPI)       │
+            │  (dist/boot.js)      (uvicorn app.main:app)      │
+            │         │                    │                   │
+            │         │                    ├─ qwen 模型 API    │
+            │         │                    ├─ Tavily 搜索 API  │
+            │         │                    └─ 阿里云 OSS       │
+            │         │                                        │
+            │         ▼                                        │
+            │       MySQL 8.0 :3306                            │
+            │       (数据库 jieyou)                             │
+            └──────────────────────────────────────────────────┘
 ```
+
+**两个服务的通信关系**：
+- 主站收到「小柴聊天」请求 → 通过 `127.0.0.1:8001/chat` 调 AI 服务 → AI 服务调模型/搜索 → 返回回复
+- AI 服务端口 `8001` **仅本机访问**，不对外暴露（安全）
 
 ---
 
@@ -80,7 +101,16 @@
 | 服务器公网 IP | 阿里云控制台查看 |
 | 服务器 root 密码 | 买服务器时设的；忘可在控制台「重置密码」 |
 | 数据库密码 | 本部署自设（建议只用字母数字，避免特殊符号 `@ # : /`） |
-| Git 仓库地址 | `https://github.com/pete-ycp/jieyou-Agent.git` |
+| 主站 Git 仓库 | `https://github.com/pete-ycp/jieyou-Agent.git`（develop 分支） |
+| AI 服务 Git 仓库 | `https://github.com/pete-ycp/jieyou-Agent1.git`（develop 分支） |
+| **AL_BASE_URL** | qwen 模型 API 地址（阿里云 MaaS，形如 `https://xxx.maas.aliyuncs.com/compatible-mode/v1`） |
+| **AL_API_KEY** | qwen 模型 API Key（阿里云 MaaS 长令牌） |
+| **TAVILY_API_KEY** | Tavily 联网搜索 API Key |
+| **OSS_ACCESS_KEY_ID** | 阿里云 OSS AccessKey ID（图片上传用） |
+| **OSS_ACCESS_KEY_SECRET** | 阿里云 OSS AccessKey Secret |
+| **OSS_BUCKET** | 阿里云 OSS Bucket 名称 |
+
+> 🔒 以上 6 个 API Key/OSS 凭证都属于敏感信息，**不要提交到 git**，只在服务器 `.env` 里配置。
 
 ### 3.2 推荐的密码字符规范
 
@@ -89,7 +119,7 @@
 
 ---
 
-## 4. 逐步部署
+## 4. 逐步部署 · 主站
 
 ### 步骤 1：买服务器 + 选镜像
 
@@ -329,7 +359,7 @@ Done.
 
 ---
 
-### 步骤 9：PM2 启动服务
+### 步骤 9：PM2 启动主站
 
 #### 9.1 启动
 ```bash
@@ -362,7 +392,7 @@ pm2 startup     # 生成开机自启脚本
 
 ---
 
-### 步骤 10：浏览器访问
+### 步骤 10：浏览器访问（主站验证）
 
 打开浏览器访问：
 
@@ -377,14 +407,260 @@ pm2 startup     # 生成开机自启脚本
 
 ---
 
-### 步骤 11（可选）：Nginx 反代 + SSL
+## 5. 逐步部署 · AI 服务
+
+> AI 服务（`jieyou-ai-concierge`）是独立的 Python 项目，提供「小柴聊天」和「AI 起草回信」两个能力。  
+> **不部署也能用主站**——主站会走兜底回复（"小柴暂时不在"）。要真实的 AI 回复才需要部署本服务。
+
+### 步骤 11：装 uv（Python 包管理器）
+
+⚠️ **重要经验**：
+- 系统自带 Python 是 3.6.8（2018 老版本），项目要求 **3.13+**，但**不用手动装 Python**——`uv` 会自动下载管理 Python 3.13。
+- `uv` 是 Rust 写的独立二进制，不依赖系统 Python 版本。
+
+#### 11.1 下载 uv 二进制
+
+国内服务器访问 GitHub 慢，**必须用加速镜像**（`astral.sh` 官方源和 pip 源都装不上）：
+
+```bash
+# 用 ghfast 加速镜像下载预编译二进制（推荐，13 秒下完）
+curl -L https://ghfast.top/https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz
+
+# 备选镜像（ghfast 不通用换这个）：
+# curl -L https://gh-proxy.com/https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz
+```
+
+预期：`20.7M` 大小，速度 1MB/s+。
+
+#### 11.2 解压安装
+
+```bash
+mkdir -p /tmp/uv-extract
+tar -xzf /tmp/uv.tar.gz -C /tmp/uv-extract
+mv /tmp/uv-extract/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/uv
+mv /tmp/uv-extract/uv-x86_64-unknown-linux-gnu/uvx /usr/local/bin/uvx
+chmod +x /usr/local/bin/uv /usr/local/bin/uvx
+```
+
+#### 11.3 把 `/usr/local/bin` 加进 PATH（关键）
+
+⚠️ **坑**：Alibaba Cloud Linux 默认 PATH **不包含 `/usr/local/bin`**，uv 装那里会 `command not found`。
+
+```bash
+echo 'export PATH=/usr/local/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+uv --version   # 应显示 uv 0.12.x
+```
+
+---
+
+### 步骤 12：clone AI 服务代码
+
+```bash
+cd /www/wwwroot
+git clone https://github.com/pete-ycp/jieyou-Agent1.git jieyou-ai-concierge
+cd /www/wwwroot/jieyou-ai-concierge
+git checkout develop
+ls -la   # 应看到 app/、pyproject.toml、uv.lock
+```
+
+> 💡 GitHub 慢用镜像：`git clone https://ghfast.top/https://github.com/pete-ycp/jieyou-Agent1.git jieyou-ai-concierge`
+
+---
+
+### 步骤 13：装 Python 依赖
+
+```bash
+cd /www/wwwroot/jieyou-ai-concierge
+uv sync
+```
+
+⚠️ **这步会**：
+1. 自动下载 Python 3.13（约 50MB，从 GitHub，可能耗时几分钟）
+2. 创建 `.venv/` 虚拟环境
+3. 从清华源装所有依赖（langchain/langgraph/fastapi 等大包）
+
+**总耗时 5-15 分钟**，别打断。无报错即成功。
+
+---
+
+### 步骤 14：配置 AI 服务 .env
+
+#### 14.1 创建 db 目录（关键，否则启动必崩）
+
+⚠️ **大坑**：项目用相对路径 `./db/Relieving_Sorrow.db` 连 sqlite，但 `db/` 目录被 git 忽略（git 不跟踪空目录），clone 后**目录不存在** → sqlite 报 `unable to open database file` → 服务反复崩溃。
+
+```bash
+mkdir -p /www/wwwroot/jieyou-ai-concierge/db
+```
+
+> 💡 sqlite 首次连接会自动建空库，只需保证父目录存在。
+
+#### 14.2 创建 .env
+
+```bash
+cd /www/wwwroot/jieyou-ai-concierge
+cat > .env <<'EOF'
+# 模型（qwen 多模态，OpenAI 兼容协议）
+AL_BASE_URL=https://xxx.maas.aliyuncs.com/compatible-mode/v1
+AL_API_KEY=你的长令牌
+
+# 联网搜索
+TAVILY_API_KEY=tvly-xxxxx
+
+# OSS（图片上传，用户给小柴发图片时用）
+OSS_ACCESS_KEY_ID=你的AK
+OSS_ACCESS_KEY_SECRET=你的SK
+OSS_BUCKET=你的bucket名
+OSS_ENDPOINT=oss-cn-beijing.aliyuncs.com
+EOF
+chmod 600 .env
+```
+
+#### 14.3 字段说明
+
+| 字段 | 是否必填 | 说明 |
+|---|---|---|
+| `AL_BASE_URL` | **必填** | qwen 模型 API 地址（阿里云 MaaS，含 `/compatible-mode/v1`） |
+| `AL_API_KEY` | **必填** | 阿里云 MaaS 长令牌（约 117 字符，非 sk- 短 key） |
+| `TAVILY_API_KEY` | **必填** | Tavily 联网搜索 key（`tvly-` 开头） |
+| `OSS_ACCESS_KEY_ID` | **必填** | 阿里云 OSS AK（24 字符） |
+| `OSS_ACCESS_KEY_SECRET` | **必填** | 阿里云 OSS SK（30 字符） |
+| `OSS_BUCKET` | **必填** | OSS Bucket 名 |
+| `OSS_ENDPOINT` | 可选 | 默认 `oss-cn-beijing.aliyuncs.com`，按 bucket 所在 region 改 |
+
+> ⚠️ **为什么 OSS 必填**：`app/common/oss.py` 在**模块加载时**就创建 OSS 客户端，配置缺失可能导致启动崩溃。即使不发图片，也建议配齐。
+
+#### 14.4 验证配置（不暴露敏感值）
+
+```bash
+awk -F= '/^[A-Z]/{if(length($2)>0) print $1"=✅已填("length($2)"字符)"; else print $1"=❌空"}' .env
+```
+
+每个变量应显示 `✅已填`。
+
+---
+
+### 步骤 15：PM2 启动 AI 服务
+
+#### 15.1 创建 PM2 配置文件
+
+```bash
+cd /www/wwwroot/jieyou-ai-concierge
+cat > ecosystem.config.cjs <<'EOF'
+module.exports = {
+  apps: [
+    {
+      name: "jieyou-ai-concierge",
+      script: "/usr/local/bin/uv",           // uv 的绝对路径，避免 PATH 问题
+      args: "run uvicorn app.main:app --host 127.0.0.1 --port 8001",
+      cwd: __dirname,
+      interpreter: "none",                    // 关键：禁用 node 解释器，直接执行 uv 二进制
+      autorestart: true,
+      max_restarts: 10,
+      env: {
+        PATH: "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin",
+      },
+    },
+  ],
+};
+EOF
+```
+
+> ⚠️ **关键点**：
+> - `script` 用 **`/usr/local/bin/uv` 绝对路径**（PM2 的 PATH 可能找不到）
+> - `interpreter: "none"` 必须——否则 PM2 用 node 去执行 uv，报语法错
+
+#### 15.2 启动
+
+```bash
+cd /www/wwwroot/jieyou-ai-concierge
+pm2 start ecosystem.config.cjs
+sleep 8
+pm2 list
+```
+
+预期：`jieyou-ai-concierge` 状态 `online`，**`↺` 重启次数不再涨**。
+
+#### 15.3 验证服务（关键）
+
+```bash
+# 看日志（应有 Uvicorn running）
+pm2 logs jieyou-ai-concierge --lines 20 --nostream
+
+# 测试 /chat 端点（第一次会慢，5-15 秒）
+curl -X POST http://127.0.0.1:8001/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"你好","history":[],"requestId":"test1","attachments":[]}'
+```
+
+预期返回：`{"reply":"（摇晃着尾巴...）你好呀！我是小柴..."}`
+
+> ⚠️ **崩溃判断**：如果 `pm2 list` 里 `↺` 数字一直涨（>0 且不断增加），说明服务启动崩了。常见原因见 [Q14](#q14ai-服务启动崩溃pm2-重启次数一直涨)。
+
+---
+
+### 步骤 16：主站对接 AI 服务
+
+#### 16.1 主站 .env 加两个变量
+
+```bash
+cat >> /www/wwwroot/jieyou/.env <<'EOF'
+
+# ── AI 解忧（小柴）────────────────────────────────────────────
+AI_CONCIERGE_URL=http://127.0.0.1:8001/chat
+
+# ── AI 回信起草（浪矢爷爷口吻）──────────────────────────────
+AI_DRAFT_URL=http://127.0.0.1:8001/draft-reply
+EOF
+
+# 验证
+grep -E "AI_CONCIERGE_URL|AI_DRAFT_URL" /www/wwwroot/jieyou/.env
+```
+
+> 💡 用 `>>`（追加），不要用 `>`（覆盖整个文件）。
+
+#### 16.2 重启主站（关键：加 --update-env）
+
+⚠️ **坑**：`pm2 restart` 默认**不重新加载环境变量**！不加 `--update-env` 的话，新加的 `AI_CONCIERGE_URL` 主站读不到。
+
+```bash
+pm2 restart jieyou-grocery-store --update-env
+sleep 5
+pm2 logs jieyou-grocery-store --lines 10 --nostream   # 应有 Server running
+```
+
+#### 16.3 保存进程列表 + 开机自启（重要）
+
+两个服务都正常后，**务必保存**，否则服务器重启后进程丢失：
+
+```bash
+pm2 save
+pm2 startup
+```
+
+`pm2 startup` 会输出一条 `sudo env PATH=... pm2 startup ...` 命令，**复制粘贴执行那条命令**（部分系统会自动执行）。看到 `Command successfully executed` 即生效。
+
+#### 16.4 浏览器测试
+
+访问 **http://<服务器公网IP>:3000**：
+
+1. **登录**：`admin` / `admin123`
+2. **小柴聊天**：点右下角小柴图标 → 发「我最近压力大」→ 应收到 AI 真实回复（不是兜底文案）
+3. **AI 起草回信**（管理员）：进「店主工作台」→ 找用户来信 → 点「AI 起草」→ 自动生成浪矢爷爷口吻回信
+
+三个都 ✅ → **完整部署大功告成！** 🎉
+
+---
+
+## 步骤 17（可选）：Nginx 反代 + SSL
 
 让网站用域名 + HTTPS 访问，更专业更安全。
 
-#### 11.1 绑域名
+#### 17.1 绑域名
 - 域名 DNS 解析 A 记录 → 服务器公网 IP
 
-#### 11.2 宝塔建站 + 反代
+#### 17.2 宝塔建站 + 反代
 1. 宝塔 → **网站** → **添加站点** → 域名填你的域名，**不要**创建数据库
 2. 站点 → **设置** → **反向代理** → 添加反向代理：
    - 代理名称：`jieyou`
@@ -392,10 +668,12 @@ pm2 startup     # 生成开机自启脚本
    - 发送域名：`$host`
 3. 启用反代
 
-#### 11.3 配 SSL（免费 Let's Encrypt）
+#### 17.3 配 SSL（免费 Let's Encrypt）
 站点 → 设置 → **SSL** → **Let's Encrypt** → 申请 → 强制 HTTPS
 
 完成后访问：`https://你的域名`
+
+> 💡 AI 服务（8001 端口）**不需要对外暴露**，主站通过 `127.0.0.1` 内网调用即可。无需为它单独配反代。
 
 ---
 
@@ -469,30 +747,90 @@ pm2 startup           # 复制输出的 sudo env 命令再执行一次
 ### Q11：浏览器打不开，但 curl 能返回 HTML
 **原因**：端口没放行。放行两处：阿里云防火墙 + 宝塔安全（见步骤 2）。
 
+### Q12：登录后仍显示登录页（Cookie 没保存）
+**原因**：HTTP 直连公网 IP 时，浏览器拒绝 `SameSite=None; Secure` 的 Cookie。  
+**解决**：已修复（`api/lib/cookies.ts` 改为基于「安全上下文」判定）。若仍出现：
+1. 清浏览器 Cookie（F12 → Application → Cookies → 清除该站点）
+2. `Ctrl+F5` 硬刷新
+3. 重新登录
+
+### Q13：`uv: command not found`（uv 已下载到 /usr/local/bin）
+**原因**：PATH 不含 `/usr/local/bin`。  
+**解决**：
+```bash
+echo 'export PATH=/usr/local/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Q14：AI 服务启动崩溃（PM2 重启次数一直涨）
+查日志定位：
+```bash
+pm2 stop jieyou-ai-concierge
+pm2 logs jieyou-ai-concierge --lines 50 --nostream
+```
+
+**最常见原因：`sqlite3.OperationalError: unable to open database file`**  
+→ 没建 `db/` 目录（见步骤 14.1）：
+```bash
+mkdir -p /www/wwwroot/jieyou-ai-concierge/db
+pm2 restart jieyou-ai-concierge
+```
+
+**其他原因**：
+- `CredentialsProviderError` / `InvalidAccessKeyId` → OSS 凭证错，检查 `.env` 的 `OSS_*`
+- `ModuleNotFoundError` → `uv sync` 没跑或失败，重跑
+- `Address already in use` → 8001 端口被占，`lsof -i:8001` 查谁占了
+
+### Q15：AI 服务 PM2 报 `uv: not found`（但命令行能跑）
+**原因**：PM2 运行环境 PATH 与命令行不同。  
+**解决**：`ecosystem.config.cjs` 里 `script` 用绝对路径 `/usr/local/bin/uv`（见步骤 15.1）。
+
+### Q16：小柴聊天一直转圈 / 返回兜底文案
+**排查链**：
+1. AI 服务在不在？`pm2 list` 看 `jieyou-ai-concierge` 是否 `online`
+2. AI 服务能响应吗？`curl -X POST http://127.0.0.1:8001/chat ...`（见步骤 15.3）
+3. 主站 `.env` 配了吗？`grep AI_CONCIERGE_URL /www/wwwroot/jieyou/.env`
+4. 主站重启加载了吗？`pm2 restart jieyou-grocery-store --update-env`（必须加 `--update-env`）
+
+### Q17：改了主站 .env 但不生效
+**原因**：`pm2 restart` 默认不重新加载环境变量。  
+**解决**：加 `--update-env` 标志：
+```bash
+pm2 restart jieyou-grocery-store --update-env
+```
+
 ---
 
 ## 运维命令速查
 
-### PM2 操作
+### PM2 操作（两个服务通用）
 ```bash
-pm2 list                          # 查看所有进程
-pm2 logs jieyou-grocery-store     # 实时日志（Ctrl+C 退出）
-pm2 logs jieyou-grocery-store --lines 100   # 看最近 100 行
-pm2 restart jieyou-grocery-store  # 重启
-pm2 reload jieyou-grocery-store   # 零停机重启
-pm2 stop jieyou-grocery-store     # 停止
-pm2 delete jieyou-grocery-store   # 删除进程
-pm2 monit                         # 实时监控面板
-pm2 save                          # 保存进程列表（修改后必做）
+pm2 list                                # 查看所有进程
+pm2 logs                                # 所有进程实时日志（Ctrl+C 退出）
+pm2 logs jieyou-grocery-store --lines 100      # 主站最近 100 行
+pm2 logs jieyou-ai-concierge --lines 100       # AI 服务最近 100 行
+pm2 restart jieyou-grocery-store --update-env  # 重启主站（改了 .env 必须加 --update-env）
+pm2 restart jieyou-ai-concierge                # 重启 AI 服务
+pm2 monit                               # 实时监控面板
+pm2 save                                # 保存进程列表（修改后必做）
+pm2 flush                               # 清空所有日志（排查时有用）
 ```
 
-### 更新代码后重新部署
+### 主站更新代码后重新部署
 ```bash
 cd /www/wwwroot/jieyou
-git pull                          # 拉最新代码
+git pull
 npm ci                            # 依赖有变动时
-npm run build                     # 重新构建
-pm2 restart jieyou-grocery-store  # 重启服务
+npm run build
+pm2 restart jieyou-grocery-store --update-env
+```
+
+### AI 服务更新代码后重新部署
+```bash
+cd /www/wwwroot/jieyou-ai-concierge
+git pull
+uv sync                           # 依赖有变动时
+pm2 restart jieyou-ai-concierge
 ```
 
 ### 数据库相关
@@ -510,22 +848,35 @@ SELECT * FROM products;
 EXIT;
 ```
 
-### 查看服务状态
+### 测试两个服务健康度
 ```bash
-pm2 list                          # PM2 进程状态
-curl http://127.0.0.1:3000        # 服务响应测试
-systemctl status pm2-root         # 开机自启服务状态
+# 主站
+curl -s http://127.0.0.1:3000 | head -5    # 返回 HTML = 正常
+
+# AI 服务
+curl -X POST http://127.0.0.1:8001/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"你好","history":[],"requestId":"t1","attachments":[]}'
+# 返回 {"reply":"..."} = 正常
+```
+
+### 查看开机自启状态
+```bash
+systemctl status pm2-root         # PM2 开机自启服务状态
 ```
 
 ### 日志位置
 - PM2 进程日志：`/root/.pm2/logs/`
-- 应用 stdout：`/root/.pm2/logs/jieyou-grocery-store-out.log`
-- 应用 stderr：`/root/.pm2/logs/jieyou-grocery-store-error.log`
+- 主站 stdout：`/root/.pm2/logs/jieyou-grocery-store-out.log`
+- 主站 stderr：`/root/.pm2/logs/jieyou-grocery-store-error.log`
+- AI 服务 stdout：`/root/.pm2/logs/jieyou-ai-concierge-out.log`
+- AI 服务 stderr：`/root/.pm2/logs/jieyou-ai-concierge-error.log`
 
 ---
 
 ## 文件结构参考
 
+### 主站 `/www/wwwroot/jieyou/`
 ```
 /www/wwwroot/jieyou/
 ├── .env                    # 环境变量（chmod 600，勿提交）
@@ -548,10 +899,35 @@ systemctl status pm2-root         # 开机自启服务状态
 └── src/                    # 前端源码
 ```
 
+### AI 服务 `/www/wwwroot/jieyou-ai-concierge/`
+```
+/www/wwwroot/jieyou-ai-concierge/
+├── .env                    # 环境变量（AL_*/TAVILY_*/OSS_*，chmod 600）
+├── .env.example            # 模板
+├── ecosystem.config.cjs    # PM2 配置（手工创建，见步骤 15.1）
+├── pyproject.toml          # Python 依赖声明（uv 用）
+├── uv.lock                 # 依赖锁文件
+├── langgraph.json          # LangGraph 图配置
+├── .venv/                  # Python 虚拟环境（uv sync 自动生成）
+├── db/                     # sqlite 记忆库（手工 mkdir，运行时生成 .db）
+└── app/                    # 源码
+    ├── main.py            # FastAPI 入口（uvicorn 启动）
+    ├── agents/
+    │   └── Relieving_Sorrow.py  # 小柴 Agent + sqlite 连接（注意 db 目录坑）
+    ├── api/v1/
+    │   ├── chat.py        # 流式对话（/api/v1/chat/stream）
+    │   └── concierge.py   # ★ 网站契约端点 POST /chat（非流式）
+    ├── common/
+    │   ├── oss.py         # OSS 图片上传（模块加载即建客户端，配置必填）
+    │   └── logger.py
+    └── models/schemas.py  # Pydantic 模型
+```
+
 ---
 
 ## 部署checklist（精简版）
 
+### 主站
 - [ ] 服务器：Alibaba Cloud Linux + 宝塔镜像
 - [ ] 防火墙放行：3000 / 80 / 443 / 8888（阿里云 + 宝塔两处）
 - [ ] Node 20+（`dnf install nodejs`，命令行可用）
@@ -565,7 +941,22 @@ systemctl status pm2-root         # 开机自启服务状态
 - [ ] `npm run db:push` 推表
 - [ ] esbuild 编译 + 运行 `seed.mjs` 灌数据
 - [ ] `pm2 start ecosystem.config.cjs`（status: online）
-- [ ] `pm2 save && pm2 startup`（开机自启）
 - [ ] 浏览器访问 `http://IP:3000` 验证
 - [ ] 登录测试（admin / admin123）
+
+### AI 服务
+- [ ] uv 已装（`uv --version`，PATH 含 `/usr/local/bin`）
+- [ ] AI 代码 clone 到 `/www/wwwroot/jieyou-ai-concierge`，切 develop
+- [ ] `uv sync` 装依赖成功
+- [ ] **`mkdir -p db`**（否则 sqlite 必崩）
+- [ ] `.env` 配齐 AL_*/TAVILY_*/OSS_* 6 个变量，`chmod 600`
+- [ ] `ecosystem.config.cjs` 创建（uv 绝对路径 + `interpreter: "none"`）
+- [ ] `pm2 start`（status: online，↺ 不涨）
+- [ ] `curl /chat` 测试返回 `{"reply":"..."}`
+- [ ] 主站 `.env` 加 `AI_CONCIERGE_URL` + `AI_DRAFT_URL`
+- [ ] `pm2 restart jieyou-grocery-store --update-env`
+- [ ] 浏览器测小柴聊天 + AI 起草
+
+### 收尾
+- [ ] `pm2 save && pm2 startup`（两个服务开机自启）
 - [ ] （可选）Nginx 反代 + SSL 绑域名
