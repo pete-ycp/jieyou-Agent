@@ -254,8 +254,8 @@ export default function Checkout() {
     <div className="mx-auto max-w-shop px-4 py-10 md:px-6 md:py-14">
       <ShopToaster />
 
-      {/* Section 1 · 步骤指示（木牌三段，手绘虚线连接） */}
-      <div className="flex items-center justify-center">
+      {/* Section 1 · 步骤指示（木牌三段，手绘虚线连接；窄屏允许换行防挤压） */}
+      <div className="flex flex-wrap items-center justify-center gap-y-2">
         {steps.map((s, i) => (
           <Fragment key={s.label}>
             <motion.div

@@ -166,7 +166,8 @@ export function AdminSectionTitle({
 export const ADMIN_TABLE = 'w-full text-sm text-ink';
 export const ADMIN_THEAD_ROW =
   'border-b-2 border-[#C9B48C] text-left text-xs tracking-[0.12em] text-wood';
-export const ADMIN_TH = 'px-3 py-2.5 font-medium';
+/** 表头单元格：whitespace-nowrap 防止窄屏下中文逐字折行（溢出由外层 overflow-x-auto 横滚承担） */
+export const ADMIN_TH = 'whitespace-nowrap px-3 py-2.5 font-medium';
 export const ADMIN_TR =
   'border-b border-[#C9B48C]/60 align-middle transition-colors hover:bg-lamp/5';
 export const ADMIN_TD = 'px-3 py-2.5';

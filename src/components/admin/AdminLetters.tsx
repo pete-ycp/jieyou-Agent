@@ -338,7 +338,8 @@ export default function AdminLetters() {
                       placeholder={`致 ${detail.penName}：\n\n先说说你读到了什么，再谈谈你的想法……`}
                       className="border-0 bg-transparent p-0 text-[17px] leading-8 text-ink shadow-none focus-visible:ring-0"
                     />
-                    <div className="mt-8 flex items-end justify-between gap-4">
+                    {/* 窄屏允许按钮组整体换行，避免签名被挤压 */}
+                    <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
                       <p className="font-hand text-2xl text-wood">浪矢杂货店</p>
                       <div className="flex items-center gap-2">
                         <Button

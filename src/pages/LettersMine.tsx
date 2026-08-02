@@ -221,20 +221,22 @@ export default function LettersMine() {
 
   return (
     <div>
-      {/* 纸笺 Toast（顶部飘下） */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ y: -16, opacity: 0, rotate: 1 }}
-            animate={{ y: 0, opacity: 1, rotate: 1 }}
-            exit={{ y: -16, opacity: 0 }}
-            transition={{ duration: 0.5, ease: EASE }}
-            className="fixed left-1/2 top-24 z-[80] -translate-x-1/2 rounded-md bg-wood px-5 py-2.5 text-sm text-cream shadow-paper-deep"
-          >
-            牛奶箱里有你的回信
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 纸笺 Toast（顶部飘下）：外层 div 专责定位居中（framer-motion 内联 transform 会覆盖 Tailwind 位移类），内层 motion 只做动画 */}
+      <div className="fixed left-1/2 top-24 z-[80] -translate-x-1/2">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ y: -16, opacity: 0, rotate: 1 }}
+              animate={{ y: 0, opacity: 1, rotate: 1 }}
+              exit={{ y: -16, opacity: 0 }}
+              transition={{ duration: 0.5, ease: EASE }}
+              className="whitespace-nowrap rounded-md bg-wood px-5 py-2.5 text-sm text-cream shadow-paper-deep"
+            >
+              牛奶箱里有你的回信
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <MineHeader letters={letters} />
 

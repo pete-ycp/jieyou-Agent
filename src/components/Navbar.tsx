@@ -40,7 +40,15 @@ export default function Navbar() {
   });
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80);
+    // 滞后阈值：>80 收缩、<40 展开，中间区间保持原状态——
+    // 防止移动端惯性/橡皮筋滚动在单一阈值附近来回穿越，导致收缩动画反复触发（实测 2.7s 内高度切换 91 次，全页抖动）
+    const onScroll = () =>
+      setScrolled((prev) => {
+        const y = window.scrollY;
+        if (y > 80) return true;
+        if (y < 40) return false;
+        return prev;
+      });
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -69,14 +77,16 @@ export default function Navbar() {
       >
         <div
           className={cn(
-            'mx-auto flex max-w-shop items-center justify-between gap-4 px-4 transition-all duration-300 ease-shop md:px-6',
-            scrolled ? 'h-[52px]' : 'h-16',
+            'mx-auto flex h-16 max-w-shop items-center justify-between gap-4 px-4 transition-all duration-300 ease-shop md:px-6',
+            // 高度收缩仅桌面（md 以上）生效，移动端恒高 64px：
+            // header 是 sticky 占文档流，高度变化会带动整页内容位移，移动端滚动时表现为整页抖动
+            scrolled && 'md:h-[52px]',
           )}
         >
           <ShopSign height={scrolled ? 38 : 46} className="transition-all duration-300" />
 
-          {/* 桌面导航 */}
-          <div className="hidden items-center gap-7 md:flex">
+          {/* 桌面导航（lg 起显示；md 档宽度不足，用抽屉避免链接折行） */}
+          <div className="hidden items-center gap-7 lg:flex">
             {NAV_LINKS.map((l) => (
               <NavLink
                 key={l.to}
@@ -148,7 +158,7 @@ export default function Navbar() {
             <button
               type="button"
               aria-label="打开菜单"
-              className="text-cream/90 md:hidden"
+              className="text-cream/90 lg:hidden"
               onClick={() => setDrawerOpen(true)}
             >
               <Menu size={22} />
@@ -192,7 +202,7 @@ export default function Navbar() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[60] flex flex-col bg-kraft md:hidden"
+            className="fixed inset-0 z-[80] flex flex-col bg-kraft lg:hidden"
           >
             <div className="flex h-16 items-center justify-between px-4">
               <ShopSign height={42} />
@@ -200,50 +210,67 @@ export default function Navbar() {
                 <X size={24} />
               </button>
             </div>
-            <nav className="flex flex-1 flex-col items-center justify-center gap-8">
-              {NAV_LINKS.map((l, i) => (
+            {/* 内容层：overflow-y-auto + data-lenis-prevent 保证超高时可滚动（Lenis 放行）；
+                内层 m-auto 让内容不超高时保持垂直居中，超高时从顶部排布避免两端被裁 */}
+            <nav className="flex flex-1 flex-col overflow-y-auto" data-lenis-prevent>
+              <div className="m-auto flex flex-col items-center gap-8 py-6">
+                {NAV_LINKS.map((l, i) => (
+                  <motion.div
+                    key={l.to}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Link
+                      to={l.to}
+                      onClick={() => setDrawerOpen(false)}
+                      className="font-hand text-3xl text-wood"
+                      style={{ writingMode: 'vertical-rl', letterSpacing: '0.35em' }}
+                    >
+                      {l.label}
+                    </Link>
+                  </motion.div>
+                ))}
                 <motion.div
-                  key={l.to}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.12 + i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="flex flex-col items-center gap-4"
                 >
-                  <Link
-                    to={l.to}
-                    onClick={() => setDrawerOpen(false)}
-                    className="font-hand text-3xl text-wood"
-                    style={{ writingMode: 'vertical-rl', letterSpacing: '0.35em' }}
-                  >
-                    {l.label}
-                  </Link>
+                  {loggedIn ? (
+                    <>
+                      {/* 移动端唯一的店主工作台入口（桌面入口在顶栏 sm 以上显示） */}
+                      {user.role === 'admin' && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setDrawerOpen(false)}
+                          className="rounded-md bg-wood px-6 py-2.5 text-cream"
+                        >
+                          店主工作台
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDrawerOpen(false);
+                          logout();
+                        }}
+                        className="rounded-md border border-wood/40 px-6 py-2.5 text-wood"
+                      >
+                        退出登录（{user.name ?? '客人'}）
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      to={LOGIN_PATH}
+                      onClick={() => setDrawerOpen(false)}
+                      className="rounded-md bg-stamp px-6 py-2.5 text-cream"
+                    >
+                      登录
+                    </Link>
+                  )}
                 </motion.div>
-              ))}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-              >
-                {loggedIn ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDrawerOpen(false);
-                      logout();
-                    }}
-                    className="rounded-md border border-wood/40 px-6 py-2.5 text-wood"
-                  >
-                    退出登录（{user.name ?? '客人'}）
-                  </button>
-                ) : (
-                  <Link
-                    to={LOGIN_PATH}
-                    onClick={() => setDrawerOpen(false)}
-                    className="rounded-md bg-stamp px-6 py-2.5 text-cream"
-                  >
-                    登录
-                  </Link>
-                )}
-              </motion.div>
+              </div>
             </nav>
           </motion.div>
         )}

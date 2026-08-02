@@ -75,10 +75,10 @@ function Hero() {
       <LampGlow className="absolute bottom-[16%] left-[12%]" size={220} bright={isNight} />
 
       <div ref={titleRef} className="relative z-10 mx-auto w-full max-w-shop px-6 md:px-10">
-        <div className="flex items-start gap-8 md:gap-14">
-          {/* 竖排大字：逐字自上而下落字 */}
+        <div className="flex items-start gap-5 md:gap-14">
+          {/* 竖排大字：逐字自上而下落字（小屏降一档字号，给右侧 CTA 留足宽度） */}
           <h1
-            className="vertical-rl font-hand text-[44px] leading-[1.25] text-cream text-glow-lamp md:text-[56px]"
+            className="vertical-rl font-hand text-[36px] leading-[1.25] text-cream text-glow-lamp sm:text-[44px] md:text-[56px]"
             style={{ maxHeight: '62vh' }}
           >
             {HERO_TITLE.split('').map((ch, i) => (

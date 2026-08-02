@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/providers/trpc';
 import { useAuth } from '@/hooks/useAuth';
 import { LOGIN_PATH } from '@/const';
 import { PRODUCT_CATEGORIES } from '@contracts/labels';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ShelfCard from '@/components/shop/ShelfCard';
 import type { ShelfProduct } from '@/components/shop/ShelfCard';
 import PaperToast from '@/components/shop/PaperToast';
@@ -114,7 +114,7 @@ function Toolbar({
   const tabs = [{ value: 'all', label: '全部' }, ...PRODUCT_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))];
   return (
     <div
-      className="sticky top-[52px] z-40 bg-cream/95 backdrop-blur-sm"
+      className="sticky top-16 z-40 bg-cream/95 backdrop-blur-sm md:top-[52px]"
       style={{ borderBottom: '2px dashed #B9A67F' }}
     >
       <div className="mx-auto flex max-w-shop flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 md:px-6">
@@ -147,21 +147,25 @@ function Toolbar({
         {/* 排序 + 计数 */}
         <div className="flex items-center gap-4">
           <span className="font-garamond text-sm text-slate">共 {total} 件</span>
-          <label className="relative inline-flex items-center">
-            <select
-              value={sort}
-              onChange={(e) => onSort(e.target.value as SortKey)}
+          {/* 排序下拉：必须用 shadcn Select（Radix 弹层），不能用原生 <select>——
+              移动端浏览器会强制弹系统 picker，店铺样式全部失效 */}
+          <Select value={sort} onValueChange={(v) => onSort(v as SortKey)}>
+            <SelectTrigger
               aria-label="排序方式"
-              className="appearance-none rounded-md border border-wood/30 bg-kraft py-1.5 pl-3 pr-8 text-sm text-wood shadow-paper transition-colors duration-400 ease-shop focus:outline-none focus:ring-1 focus:ring-lamp"
+              size="sm"
+              className="rounded-md border-wood/30 bg-kraft text-sm text-wood shadow-paper transition-colors duration-400 ease-shop focus-visible:ring-1 focus-visible:ring-lamp"
             >
+              <SelectValue />
+            </SelectTrigger>
+            {/* popper 模式：选项从触发器下方展开（默认 item-aligned 会覆盖触发器，看起来像选项脱离了下拉框） */}
+            <SelectContent position="popper">
               {SORTS.map((s) => (
-                <option key={s.value} value={s.value}>
+                <SelectItem key={s.value} value={s.value}>
                   {s.label}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 text-wood/70" />
-          </label>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

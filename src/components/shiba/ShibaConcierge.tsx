@@ -104,6 +104,8 @@ export default function ShibaConcierge() {
   openRef.current = open;
 
   const isAdmin = location.pathname.startsWith('/admin');
+  // 购物车页底部有 fixed 结算条（z-40），小柴抬高避免遮挡合计金额与结账按钮
+  const isCartPage = location.pathname === '/cart';
 
   /* ---------------- 状态气泡 ---------------- */
   const bubbleFor = useCallback((s: ShibaState): Bubble | null => {
@@ -312,29 +314,31 @@ export default function ShibaConcierge() {
         type="button"
         onClick={handleClick}
         aria-label="小柴（AI 解忧员）——点我聊聊"
-        className="fixed bottom-3 left-0 z-[60] block w-24 cursor-pointer select-none bg-transparent p-0 md:bottom-4 md:w-32"
+        className={`fixed left-0 z-[40] block w-24 cursor-pointer select-none bg-transparent p-0 md:bottom-4 md:w-32 ${isCartPage ? 'bottom-20' : 'bottom-3'}`}
         style={{ transform: `translateX(${xRef.current}px)` }}
       >
-        {/* 气泡 */}
-        <AnimatePresence>
-          {bubble && (
-            <motion.span
-              key={bubble.text}
-              initial={{ opacity: 0, y: 6, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.94 }}
-              transition={{ duration: 0.3 }}
-              className="absolute -top-9 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-cream/95 px-2.5 py-1 text-[11px] text-wood shadow-paper"
-              style={{ border: '1px solid #D9C9A8' }}
-            >
-              {bubble.icon === 'moon' && <Moon size={11} className="text-slate" />}
-              {bubble.icon === 'food' && <Drumstick size={11} className="text-vermilion" />}
-              {bubble.icon === 'mail' && <Mail size={11} className="text-slate" />}
-              {bubble.icon === 'heart' && <MessageCircleHeart size={11} className="text-stamp" />}
-              {bubble.text}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        {/* 气泡：外层 span 专责定位居中（framer-motion 的内联 transform 会覆盖 Tailwind 位移类，需拆开），内层 motion 只做动画 */}
+        <span className="absolute -top-9 left-1/2 -translate-x-1/2">
+          <AnimatePresence>
+            {bubble && (
+              <motion.span
+                key={bubble.text}
+                initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.94 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center gap-1 whitespace-nowrap rounded-full bg-cream/95 px-2.5 py-1 text-[11px] text-wood shadow-paper"
+                style={{ border: '1px solid #D9C9A8' }}
+              >
+                {bubble.icon === 'moon' && <Moon size={11} className="text-slate" />}
+                {bubble.icon === 'food' && <Drumstick size={11} className="text-vermilion" />}
+                {bubble.icon === 'mail' && <Mail size={11} className="text-slate" />}
+                {bubble.icon === 'heart' && <MessageCircleHeart size={11} className="text-stamp" />}
+                {bubble.text}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
 
         {/* 睡觉时的 Zzz 飘字 */}
         {state === 'sleep' && (

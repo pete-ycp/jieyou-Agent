@@ -249,7 +249,8 @@ export default function LetterDetail() {
         {/* Section 2 · 来信（整页 PaperUnfold 进入） */}
         <PaperUnfold stamp={<Postmark date={fmtPostmarkDate(letter.createdAt)} size={88} />}>
           <LetterPaper date={undefined} signature="" lines>
-            <div className="flex items-center gap-3 pr-24">
+            {/* 首行让位右上角邮戳：窄屏少让 16px（pr-20），sm 以上恢复 pr-24 */}
+            <div className="flex items-center gap-3 pr-20 sm:pr-24">
               <CategorySeal category={letter.category} size={40} />
               <p className="font-garamond text-xs tracking-[0.12em] text-slate">
                 {fmtPostmarkDate(letter.createdAt)} · 投进投递口
@@ -323,7 +324,7 @@ export default function LetterDetail() {
                     {LETTER_STATUS_LABELS.egg} · 彩蛋
                   </span>
                 )}
-                <p className="pr-24 text-[17px] leading-8 text-ink">{letter.penName} 收：</p>
+                <p className="pr-20 text-[17px] leading-8 text-ink sm:pr-24">{letter.penName} 收：</p>
                 <div className="mt-8 text-[17px] text-ink">
                   {replyParagraphs.map((p, i) => (
                     <p key={i} className="indent-8 leading-8">

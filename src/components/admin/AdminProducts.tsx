@@ -251,7 +251,8 @@ export default function AdminProducts() {
                     loading="lazy"
                   />
                 </td>
-                <td className={`${ADMIN_TD} max-w-44`}>
+                {/* 名称列：min-w 保底宽度，窄屏不再逐字折行（超出部分由表格外层横滚） */}
+                <td className={`${ADMIN_TD} min-w-36 max-w-44`}>
                   <div className="font-medium text-ink">{p.name}</div>
                   {p.keeperNote && (
                     <div className="mt-0.5 line-clamp-1 text-xs text-slate">手记：{p.keeperNote}</div>
