@@ -28,7 +28,7 @@
    - [步骤 3：安装基础软件](#步骤-3安装基础软件)
    - [步骤 4：建库](#步骤-4建库)
    - [步骤 5：传代码](#步骤-5传代码)
-   - [步骤 6：装依赖 + 构建](#步骤-6装依赖--构建)
+   - [步骤 6：构建产物](#步骤-6构建产物)
    - [步骤 7：配置 .env](#步骤-7配置-env)
    - [步骤 8：推表 + 灌数据](#步骤-8推表--灌数据)
    - [步骤 9：PM2 启动主站](#步骤-9pm2-启动主站)
@@ -87,7 +87,7 @@
 - **数据库**：依赖 MySQL（`mysql2`，`mode: planetscale`，兼容标准 MySQL 8.0）。
 - **AI 服务**（`AI_CONCIERGE_URL`/`AI_DRAFT_URL`）**可选** —— 未配走兜底回复，主站正常。
 - **登录机制**：项目**自实现的账号密码登录**（scrypt 哈希 + JWT），**不依赖 Kimi 平台**。Kimi OAuth 是死代码旁路（前端无按钮调用）。
-- **Node 版本**：**≥ 20.11**（代码用 `import.meta.dirname`，`package.json` 已锁 `engines`）。
+- **Node 版本**：**≥ 22.12**（代码用 `import.meta.dirname`；vite v7.3.0 强制要求 ≥ 20.19 或 ≥ 22.12，Node 20.18.x 构建会崩。直接用 Node 22 LTS 最稳）。
 - **生产启动校验**：`api/lib/env.ts` 在 `NODE_ENV=production` 时强制校验 `APP_ID`/`APP_SECRET`/`DATABASE_URL`/`KIMI_AUTH_URL`/`KIMI_OPEN_URL` 这 5 个变量非空。**即使功能上用不到 Kimi，这 5 个也必须给非空值**才能启动。
 
 ---
@@ -148,54 +148,77 @@ ssh root@<服务器公网IP>
 ```
 或用阿里云控制台「远程连接」/ 宝塔「终端」。
 
-#### 3.2 安装 Node 20（系统级，命令行可用）
+#### 3.2 安装 Node 22（系统级，命令行可用）
 
 ⚠️ **重要经验**：宝塔「Node.js 版本管理器」装的 Node 只在宝塔内部可见，**SSH 命令行用不了**。务必用下面的命令行方式装一套。
+
+⚠️ **版本要求（2026-08 实测踩坑）**：项目用 **vite v7.3.0**，它**强制要求 Node ≥ 20.19 或 ≥ 22.12**。如果装 Node 20.18.x，构建会中途 `Killed`（vite 静默崩溃）。**直接装 Node 22 LTS，省一切麻烦**。
 
 ```bash
 # 切 root
 sudo -i
 
-# 用 dnf 装 Node（走阿里云内网镜像，秒装）
+# 装 NodeSource 源 + Node 22（走官方源，稳定）
+curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
 dnf install -y nodejs
 
-# 验证版本（需 ≥ 20.11）
-node -v   # 应显示 v20.x
+# 验证版本（应为 v22.x）
+node -v   # 应显示 v22.x（如 v22.23.2）
 npm -v
 ```
 
-如果 dnf 装的版本不够 20，用 `n` 升级：
+> 💡 **或用宝塔装 Node 22**：宝塔 → 软件商店 → Node.js 版本管理器 → 安装 `v22.18.0`。装完看 3.4 配 PATH。
+
+#### 3.3 配置 PATH（让命令行用上新版 Node）
+
+⚠️ **坑**：宝塔装的 Node 默认不在 SSH 的 PATH 里；即使 dnf 装了新 Node，PATH 里可能还残留旧版路径盖住新版。**务必验证 `which node` 指向正确版本**。
+
 ```bash
-npm install -g n
-n 20
-hash -r
+# 看 node 实际用的哪个
+which node
+node -v
+
+# 如果不是 v22，配 PATH：
+# 方案 A：用宝塔的 Node（路径里的版本号按实际填）
+echo 'export PATH=/www/server/nodejs/v22.18.0/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+
+# 方案 B：用 dnf 装的系统 Node（/usr/bin/node）
+echo 'export PATH=/usr/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+
+# 再次验证（必须是 v22.x）
+which node
 node -v
 ```
 
-#### 3.3 安装 git
+⚠️ **PATH 配置陷阱**：`.bashrc` 从上往下执行，后写的 `export PATH=...:$PATH` 会把目录追加到前面。如果有多行 PATH 配置，**靠后的那行决定的版本会优先**。改完后用 `which node` 确认指向 v22，不要凭感觉。
+
+#### 3.4 安装 git
 ```bash
 dnf install -y git
 git --version
 ```
 
-#### 3.4 安装 PM2
+#### 3.5 安装 PM2
 ```bash
 npm install -g pm2
+pm2 -v
 ```
 
 ⚠️ **PM2 命令找不到的修复**（如果 `pm2 -v` 报 command not found）：
 ```bash
 # 找到 npm 全局 bin 目录
 npm root -g
-# 假设输出 /www/server/nodejs/v20.18.3/lib/node_modules
-# 则 bin 目录是 /www/server/nodejs/v20.18.3/bin，加进 PATH：
+# 假设输出 /www/server/nodejs/v22.18.0/lib/node_modules
+# 则 bin 目录是 /www/server/nodejs/v22.18.0/bin，加进 PATH：
 
-echo 'export PATH=/www/server/nodejs/v20.18.3/bin:$PATH' >> ~/.bashrc
+echo 'export PATH=/www/server/nodejs/v22.18.0/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 pm2 -v
 ```
 
-#### 3.5 宝塔面板安装软件
+#### 3.6 宝塔面板安装软件
 宝塔 → 软件商店，安装：
 - **MySQL 8.0**
 - **Nginx**（步骤 11 反代用）
@@ -249,26 +272,86 @@ ls -la
 
 ---
 
-### 步骤 6：装依赖 + 构建
+### 步骤 6：构建产物
+
+⚠️ **重要（2026-08 实测）**：阿里云轻量服务器（2 核 2G / 实际可用内存 ~896MB）**内存太小**，在服务器上跑 `npm install` 和 `vite build` 会直接被 OOM `Killed`（即使加了 5GB swap 也不行）。**推荐方案：本地构建 dist/，打包上传到服务器**。
+
+> 💡 **为什么不在服务器构建**：`npm install` 峰值吃 ~700MB+，`vite build` 还要再吃几百 MB，896MB 内存的服务器扛不住，swap 又太慢。本地构建（Windows/Mac）30 秒搞定，上传 46MB zip 只要几分钟，远比在服务器上折腾 swap 省事。
+
+#### 6.1 本地构建（在你的开发电脑上）
 
 ```bash
-cd /www/wwwroot/jieyou
+cd jieyou-grocery-store   # 进入项目根目录
 
-# 装依赖（3-5 分钟，别打断）
-npm ci
+# 拉最新代码
+git pull
 
-# 国内服务器慢可换镜像源：
-# npm config set registry https://registry.npmmirror.com
+# 装依赖（首次或 package.json 变动时）
+npm install
 
 # 构建（生成 dist/）
 npm run build
 ```
 
-验证构建产物：
+构建成功标志（看到这些就对了）：
+```
+✓ 2711 modules transformed.
+✓ built in 45.25s
+
+dist/public/index.html
+dist/public/assets/index-xxxxxx.css
+dist/public/assets/index-xxxxxx.js
+dist/boot.js  2.3mb
+```
+
+#### 6.2 打包 dist/
+
+**Windows PowerShell：**
+```powershell
+cd jieyou-grocery-store
+Compress-Archive -Path dist -DestinationPath dist.zip -Force
+```
+
+**Git Bash / Mac / Linux：**
+```bash
+cd jieyou-grocery-store
+zip -r dist.zip dist
+```
+
+生成的 `dist.zip` 约 46MB。
+
+#### 6.3 上传到服务器
+
+**用宝塔面板上传（推荐）：**
+1. 宝塔 → **文件** → 进入 `/www/wwwroot/jieyou/`
+2. 点「**上传**」→ 选 `dist.zip`
+3. 等上传完成
+
+#### 6.4 服务器解压
+
+```bash
+cd /www/wwwroot/jieyou
+
+# 删旧的（若有）
+rm -rf dist
+
+# 解压
+unzip -o dist.zip
+
+# 删 zip 释放空间
+rm -f dist.zip
+```
+
+验证产物齐全：
 ```bash
 ls -la dist
 # 应看到：boot.js（服务端入口）、public/（前端静态文件）
+
+ls -la dist/public/index.html   # 必须存在
+ls -la dist/boot.js             # 必须存在
 ```
+
+> ⚠️ **注意**：Windows 打包的 zip 用反斜杠路径，unzip 会警告 `appears to use backslashes`，**正常现象，能正确解压**，忽略即可。
 
 ---
 
@@ -361,18 +444,49 @@ Done.
 
 ### 步骤 9：PM2 启动主站
 
+⚠️ **关键坑（2026-08 实测）**：PM2 v7 + Node 22 默认走 **cluster 模式**，会卡在 `launching` 状态起不来。**必须在 `ecosystem.config.cjs` 里显式指定 `exec_mode: "fork"`**。
+
+#### 9.0 确认 ecosystem.config.cjs 配置正确
+
+先看配置文件内容：
+```bash
+cat /www/wwwroot/jieyou/ecosystem.config.cjs
+```
+
+⚠️ **必须包含 `exec_mode: "fork"`**。如果仓库里的版本没有这一行，手动补上：
+```bash
+cat > /www/wwwroot/jieyou/ecosystem.config.cjs << 'EOF'
+module.exports = {
+  apps: [
+    {
+      name: "jieyou-grocery-store",
+      script: "dist/boot.js",
+      cwd: __dirname,
+      exec_mode: "fork",   // ← 关键！不加这行 PM2 v7 会卡在 launching
+      instances: 1,
+      autorestart: true,
+      max_restarts: 10,
+      env: {
+        NODE_ENV: "production",
+      },
+    },
+  ],
+};
+EOF
+```
+
 #### 9.1 启动
 ```bash
 cd /www/wwwroot/jieyou
 pm2 start ecosystem.config.cjs
 ```
 
-预期输出（status 为 `online`）：
+预期输出（status 为 `online`，**mode 为 `fork`**）：
 ```
 ┌────┬──────────────────────┬──────┬───────────┐
-│ id │ name                 │ ...  │ status    │
+│ id │ name                 │ mode │ status    │
 ├────┼──────────────────────┼──────┼───────────┤
-│ 0  │ jieyou-grocery-store │ ...  │ online    │
+│ 0  │ jieyou-grocery-store │ fork │ online    │
 └────┴──────────────────────┴──────┴───────────┘
 ```
 
@@ -389,6 +503,14 @@ pm2 startup     # 生成开机自启脚本
 ```
 
 `pm2 startup` 会输出一条 `sudo env PATH=... pm2 startup ...` 命令，**复制粘贴执行那条命令**（部分系统会自动执行）。看到 `Command successfully executed` 即生效。
+
+> ⚠️ **换 Node 版本后必须 `pm2 kill` 重启 daemon**：如果 PM2 是用旧 Node 启动的，换 Node 后进程会报 `Cannot find module '.../ProcessContainerFork.js'`。解决：
+> ```bash
+> pm2 kill          # 彻底停 daemon
+> pm2 ping          # 用当前 Node 重新拉起 daemon
+> pm2 start ecosystem.config.cjs
+> pm2 save
+> ```
 
 ---
 
@@ -690,6 +812,19 @@ pm2 startup
 
 ## 常见问题排查
 
+### ⚡ 踩坑速查表（2026-08 实测，按出现频率排序）
+
+| 现象 | 根因 | 一句话解决 |
+|---|---|---|
+| `vite build` 中途 `Killed` | Node 20.18.x < vite v7 要求的 20.19+ | 升级 Node 到 **v22 LTS** |
+| `npm install` 也被 `Killed` | 服务器 896MB 内存太小 | **本地构建 + 上传 dist/**（见步骤 6） |
+| PM2 一直 `launching` 不 online | PM2 v7 cluster 模式问题 | ecosystem.config.cjs 加 `exec_mode:"fork"` |
+| `Cannot find module '.../ProcessContainerFork.js'` | PM2 daemon 用旧 Node 启动 | `pm2 kill && pm2 ping` 重启 daemon |
+| 升级 Node 后 `node -v` 没变 | PATH 里旧版本路径盖住新版 | 改 `.bashrc`，`which node` 确认指向 v22 |
+| 浏览器看不到修复 | 浏览器缓存 | `Ctrl + Shift + R` 强制刷新 |
+
+> 💡 详细原因和完整解决步骤见下方 Q1–Q21。
+
 ### Q1：`npm: command not found` / `node: command not found`
 **原因**：宝塔装的 Node 只在宝塔内部可见，命令行用不了。  
 **解决**：用 `dnf install -y nodejs` 在系统级装一套（见步骤 3.2）。
@@ -799,6 +934,28 @@ pm2 restart jieyou-ai-concierge
 pm2 restart jieyou-grocery-store --update-env
 ```
 
+### Q18：`vite build` 报 `Killed`（构建中途被杀）
+**原因**：项目用 vite v7.3.0，**要求 Node ≥ 20.19 或 ≥ 22.12**。Node 20.18.x 不满足，vite 在 rendering 阶段静默崩溃（输出 `✓ 2711 modules transformed.` 后 `Killed`）。  
+**解决**：升级 Node 到 v22 LTS（见步骤 3.2）。验证 `node -v` ≥ 22.12。
+
+### Q19：`npm install` 也被 `Killed`（装依赖就崩）
+**原因**：服务器只有 896MB 内存，`npm install` 峰值吃 700MB+，OOM。加 swap 也没用（swap 太慢）。  
+**解决**：**不要在服务器构建**。改用「本地构建 + 上传 dist/」（见步骤 6 / 运维命令速查）。
+
+### Q20：PM2 状态一直 `launching`，起不来
+**原因**：PM2 v7 + Node 22 默认 cluster 模式，进程启动卡死。  
+**解决**：在 `ecosystem.config.cjs` 加 `exec_mode: "fork"`（见步骤 9.0）。
+
+### Q21：PM2 报 `Cannot find module '.../ProcessContainerFork.js'`
+**原因**：PM2 daemon 是用旧 Node 启动的，换 Node 后旧路径下的 pm2 文件没了。  
+**解决**：彻底重启 PM2 daemon：
+```bash
+pm2 kill          # 停 daemon
+pm2 ping          # 用当前 Node 重新拉起 daemon
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
 ---
 
 ## 运维命令速查
@@ -816,14 +973,36 @@ pm2 save                                # 保存进程列表（修改后必做�
 pm2 flush                               # 清空所有日志（排查时有用）
 ```
 
-### 主站更新代码后重新部署
+### 主站更新前端代码后重新部署（⚠️ 推荐流程）
+
+服务器内存太小（896MB）不能直接构建，**用本地构建 + 上传 dist/ 的方式**。整个流程 2-3 分钟：
+
+**第 1 步：本地构建 + 打包（开发电脑）**
+```bash
+cd jieyou-grocery-store
+git pull                    # 拉最新代码
+npm run build               # 构建（首次需先 npm install）
+
+# 打包（Windows PowerShell）
+Compress-Archive -Path dist -DestinationPath dist.zip -Force
+# 或 Git Bash / Mac：zip -r dist.zip dist
+```
+
+**第 2 步：上传（宝塔面板）**
+- 宝塔 → 文件 → `/www/wwwroot/jieyou/` → 上传 `dist.zip`
+
+**第 3 步：服务器解压 + 重启（SSH）**
 ```bash
 cd /www/wwwroot/jieyou
-git pull
-npm ci                            # 依赖有变动时
-npm run build
-pm2 restart jieyou-grocery-store --update-env
+rm -rf dist && unzip -o dist.zip && rm -f dist.zip
+pm2 restart jieyou-grocery-store
+pm2 save
 ```
+
+**第 4 步：浏览器验证**
+- 打开 `http://<服务器IP>:3000`，**强制刷新（Ctrl + Shift + R）**
+- F12 → Network 看 `index-xxx.js` 文件名是否更新（构建后文件名带 hash 会变）
+- 看到旧版本 = 浏览器缓存，强制刷新或开无痕窗口
 
 ### AI 服务更新代码后重新部署
 ```bash
@@ -881,7 +1060,7 @@ systemctl status pm2-root         # PM2 开机自启服务状态
 /www/wwwroot/jieyou/
 ├── .env                    # 环境变量（chmod 600，勿提交）
 ├── .env.example            # 模板
-├── ecosystem.config.cjs    # PM2 配置（develop 分支才有）
+├── ecosystem.config.cjs    # PM2 配置（develop 分支才有，须含 exec_mode:"fork"）
 ├── package.json
 ├── drizzle.config.ts       # drizzle-kit 配置（读 DATABASE_URL）
 ├── dist/                   # 构建产物
@@ -930,17 +1109,19 @@ systemctl status pm2-root         # PM2 开机自启服务状态
 ### 主站
 - [ ] 服务器：Alibaba Cloud Linux + 宝塔镜像
 - [ ] 防火墙放行：3000 / 80 / 443 / 8888（阿里云 + 宝塔两处）
-- [ ] Node 20+（`dnf install nodejs`，命令行可用）
+- [ ] **Node 22 LTS**（`curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && dnf install -y nodejs`）
+- [ ] **PATH 配好**（`which node` 指向 v22.x，不是 v20）
 - [ ] git（`dnf install git`）
 - [ ] pm2（`npm install -g pm2`，PATH 配好）
 - [ ] MySQL 8.0（宝塔装，运行中）
 - [ ] 数据库 `jieyou`（utf8mb4 编码）
 - [ ] 代码 clone 到 `/www/wwwroot/jieyou`，**切到 develop 分支**
-- [ ] `npm ci && npm run build`
+- [ ] **本地构建 dist/ + 打包 dist.zip + 上传解压**（见步骤 6）
 - [ ] `.env` 配齐 5 个必填变量，`chmod 600`
 - [ ] `npm run db:push` 推表
 - [ ] esbuild 编译 + 运行 `seed.mjs` 灌数据
-- [ ] `pm2 start ecosystem.config.cjs`（status: online）
+- [ ] `ecosystem.config.cjs` 含 `exec_mode: "fork"`
+- [ ] `pm2 start ecosystem.config.cjs`（status: **online**，mode: **fork**）
 - [ ] 浏览器访问 `http://IP:3000` 验证
 - [ ] 登录测试（admin / admin123）
 
